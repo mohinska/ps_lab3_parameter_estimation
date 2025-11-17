@@ -1,0 +1,212 @@
+---
+title: "Lab 3"
+author: "Team 11: Марина Огінська, Роман Пемпусь, Антон Депутат"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+# Lab 3: Parameter estimation and Unbiasedness of Estimators
+
+## Work Breakdown Structure
+
+-   Антон Депутат: Implementation of Problem 1 (Estimated effort: 33%)
+-   Марина Огінська: Implementation of Problem 2 (Estimated effort: 33%)
+-   Роман Пемпусь: Implementation of Problem 3 (Estimated effort: 33%)
+
+# Problem 1
+
+```{r}
+team_id <- 11
+set.seed(team_id)
+
+theta <- team_id / 10
+lambda <- 1 / theta
+
+# simulation parameters
+m <- 10000 # repetitions
+n <- 50    # sample size
+
+# significance levels alpha
+alphas <- c(0.1, 0.05, 0.01)
+
+cat("--- simulation parameters ---\n")
+cat("team id:", team_id, "\n")
+cat("true theta:", theta, "(lambda:", lambda, ")\n")
+cat("sample size (n):", n, "\n")
+cat("number of simulations (m):", m, "\n\n")
+
+# --- simulation ---
+
+# generate m samples, each size n, from exp(lambda)
+# each column is one sample
+samples_matrix <- matrix(rexp(n * m, rate = lambda), nrow = n, ncol = m)
+
+# compute statistics for each sample (each column)
+sample_means <- colMeans(samples_matrix) # vector of m sample means
+sample_vars <- apply(samples_matrix, 2, var) # vector of m sample variances
+
+# --- analysis for each alpha ---
+
+# list for storing results
+results_list <- list()
+
+for (alpha in alphas) {
+  conf_level <- 1 - alpha
+  cat("--- analysis for confidence level:", conf_level, "(alpha =", alpha, ") ---\n")
+
+  # --- method 1: exact (chi-square) ---
+  # theory: 2 * lambda * n * x_bar ~ chisq(2n)
+  # q1 < 2 * (1/theta) * n * x_bar < q2
+  # q1 / (2*n*x_bar) < 1/theta < q2 / (2*n*x_bar)
+  # 2*n*x_bar / q2 < theta < 2*n*x_bar / q1
+  q1_chi <- qchisq(alpha / 2, df = 2 * n)
+  q2_chi <- qchisq(1 - alpha / 2, df = 2 * n)
+
+  lower1 <- (2 * n * sample_means) / q2_chi
+  upper1 <- (2 * n * sample_means) / q1_chi
+
+  coverage1 <- mean(lower1 < theta & upper1 > theta)
+  length1 <- mean(upper1 - lower1)
+
+  cat("method 1 (exact, chisq): coverage =",
+      format(coverage1, digits = 4), "| avg length =", format(length1, digits = 4), "\n")
+
+  # --- method 2: normal approximation (z-stat, plug-in) ---
+  # ci: x_bar +/- z * (sigma / sqrt(n))
+  # approximate sigma (= theta) with x_bar
+  z_crit <- qnorm(1 - alpha / 2)
+  margin2 <- z_crit * sample_means / sqrt(n) # using x_bar as est of theta
+
+  lower2 <- sample_means - margin2
+  upper2 <- sample_means + margin2
+
+  coverage2 <- mean(lower2 < theta & upper2 > theta)
+  length2 <- mean(upper2 - lower2)
+
+  cat("method 2 (z-stat, plug-in): coverage =",
+      format(coverage2, digits = 4), "| avg length =", format(length2, digits = 4), "\n")
+
+  # --- method 3: normal approximation (z-stat, inequality solved) ---
+  # solve |x_bar - theta| <= z * theta / sqrt(n)
+  # theta >= x_bar / (1 + z / sqrt(n))
+  # theta <= x_bar / (1 - z / sqrt(n))
+  lower3 <- sample_means / (1 + z_crit / sqrt(n))
+  upper3 <- sample_means / (1 - z_crit / sqrt(n))
+
+  # exclude invalid cases when denominator <= 0
+  valid_intervals3 <- (1 - z_crit / sqrt(n)) > 0
+  coverage3 <- mean(lower3[valid_intervals3] < theta & upper3[valid_intervals3] > theta)
+  length3 <- mean(upper3[valid_intervals3] - lower3[valid_intervals3])
+
+  cat("method 3 (z-stat, solved): coverage =",
+      format(coverage3, digits = 4), "| avg length =", format(length3, digits = 4), "\n")
+
+  # --- method 4: student t-distribution ---
+  # ci: x_bar +/- t * (s / sqrt(n))
+  t_crit <- qt(1 - alpha / 2, df = n - 1)
+  margin4 <- t_crit * sqrt(sample_vars) / sqrt(n)
+
+  lower4 <- sample_means - margin4
+  upper4 <- sample_means + margin4
+
+  coverage4 <- mean(lower4 < theta & upper4 > theta)
+  length4 <- mean(upper4 - lower4)
+
+  cat("method 4 (t-stat, s): coverage =",
+      format(coverage4, digits = 4), "| avg length =", format(length4, digits = 4), "\n\n")
+
+  # save results
+  results_list[[as.character(conf_level)]] <- data.frame(
+    method = c("1 (exact, chisq)", "2 (z-stat, plug-in)", "3 (z-stat, solved)", "4 (t-stat, s)"),
+    confidence_level = conf_level,
+    empirical_coverage = c(coverage1, coverage2, coverage3, coverage4),
+    avg_length = c(length1, length2, length3, length4)
+  )
+}
+
+# merge all results
+final_results <- do.call(rbind, results_list)
+rownames(final_results) <- NULL
+```
+
+The key difference between the four methods is that **Method 1 is exact**, while **Methods 2, 3, and 4 are approximate**.
+
+### Method 1 (Chi-Squared, χ²)
+
+This method uses the exact distributional result:
+
+$$
+2\lambda n \bar{X} \sim \chi^2_{2n}
+$$
+
+Since the sampling distribution is known exactly, the empirical coverage closely matches the nominal confidence level.
+
+### Methods 2, 3, and 4 (Z-stat and t-stat)
+
+These methods rely on the Central Limit Theorem:
+
+$$
+\bar{X} \approx N(\theta, \sigma^2/n)
+$$
+
+The exponential distribution is highly skewed, so convergence to normality is slow. With $n = 50$, the sampling distribution of $\bar{X}$ remains skewed.\
+All three methods use **symmetric** confidence intervals, which do not match this asymmetric distribution, resulting in under-coverage.
+
+Method 4 adjusts for the estimation of variance but still does not correct for skewness.
+
+------------------------------------------------------------------------
+
+## 2. Analysis of Simulation Results
+
+### (a) Coverage
+
+-   **Method 1 (Exact, Chi-Squared):**\
+    Best performance. Coverage values (0.9076, 0.9559, 0.9896) closely match the nominal levels (0.90, 0.95, 0.99).
+
+-   **Method 3 (Z-stat, solved):**\
+    Very good coverage, close to nominal.
+
+-   **Method 2 (Z-stat, plug-in)** and **Method 4 (t-stat):**\
+    Both show consistent **under-coverage**.\
+    For 95% CI: \~94% instead of 95%.\
+    Intervals are too narrow.
+
+### (b) Interval Length (Precision)
+
+-   **Shortest intervals:** Method 2, Method 4\
+-   **Longest intervals:** Method 3\
+-   **Method 1:** Middle length
+
+Short intervals of Methods 2 and 4 are misleading because they fail to achieve correct coverage.
+
+### (c) Best Method
+
+**Method 1 (Exact Chi-Squared) is the best overall method.**
+
+Reasons: - Correct coverage\
+- Good precision\
+- Theoretically exact\
+- Methods 2 and 4 under-cover; Method 3 is too wide
+
+------------------------------------------------------------------------
+
+## 3. Effect of Sample Size $n$
+
+### If $n$ increases:
+
+-   All intervals become shorter\
+-   Approximate methods improve\
+-   Coverage approaches the nominal level
+
+### If $n$ decreases:
+
+-   Skewness increases\
+-   Under-coverage of Methods 2 and 4 worsens\
+-   Method 1 remains reliable
+
+# Problem 2
+
+# Problem 3
