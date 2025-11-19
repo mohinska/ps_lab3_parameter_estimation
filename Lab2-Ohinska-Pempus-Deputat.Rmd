@@ -1,0 +1,263 @@
+---
+title: "Lab 3"
+author: "Team 11: Марина Огінська, Роман Пемпусь, Антон Депутат"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+# Lab 3: Parameter estimation and Unbiasedness of Estimators
+
+## Work Breakdown Structure
+
+-   Антон Депутат: Implementation of Problem 1 (Estimated effort: 33%)
+-   Марина Огінська: Implementation of Problem 2 (Estimated effort: 33%)
+-   Роман Пемпусь: Implementation of Problem 3 (Estimated effort: 33%)
+
+## Problem 1
+
+### Deriving confidence intervals
+
+#### Subtask 1
+
+$$
+\begin{align*}
+    X_i \sim \mathcal{E}(\lambda)\\
+    2\lambda X_i \sim \mathcal{E}(1/2) \sim \Gamma(1, 1/2) \sim \chi^2_2 \\
+    2\lambda \sum_{i=1}^n X_i = \frac{2n\bar{X}}{\theta} \sim \chi^2_{2n} \\
+    \text{Confidence intervals:} \\
+    P\left( \chi^2_{\alpha/2, 2n} \leq \frac{2n\bar{X}}{\theta} \leq \chi^2_{1-\alpha/2, 2n} \right) = 1-\alpha \\
+    P\left( \frac{2n\bar{X}}{\chi^2_{1-\alpha/2, 2n}} \leq \theta \leq \frac{2n\bar{X}}{\chi^2_{\alpha/2, 2n}} \right) = 1-\alpha
+\end{align*}
+$$
+
+#### Subtask 2
+
+$$
+\begin{align*}
+    Z := \frac{\sqrt{n}(\bar{X}-\theta)}{\theta} \sim \mathcal{N}(0,1) \text{ (by CLT)} \\
+    P(Z \le z_\beta) = \beta \\
+    P(|Z| \le z_\beta) = P(-z_\beta \le Z \le z_\beta) = 2\beta - 1 \\
+    \text{Confidence intervals:} \\
+    P\left( \left| \frac{\sqrt{n}(\bar{X}-\theta)}{\theta} \right| \le z_\beta \right) = 2\beta - 1 \\
+    P\left( |\bar{X} - \theta| \leq z_\beta \frac{\theta}{\sqrt{n}} \right) = 2\beta - 1 \\
+    P\left( -z_\beta \frac{\theta}{\sqrt{n}} \leq \bar{X} - \theta \leq z_\beta \frac{\theta}{\sqrt{n}} \right) = 2\beta - 1 \\
+    \bar{X} \pm z_\beta \frac{\theta}{\sqrt{n}} \text{ is the confidence interval for } \theta \text{ of th econfidence level } 2\beta - 1
+\end{align*}
+$$
+
+#### Subtask 3
+
+$$
+\begin{align*}
+    \text{From previous subtask: } P\left( |\bar{X} - \theta| \leq z_\beta \frac{\theta}{\sqrt{n}} \right) = 2\beta - 1 \\
+    \text{Let } k = \frac{z_\beta}{\sqrt{n}}\\
+     |\theta - \bar{X}| \leq k\theta \\
+    -k\theta \leq \bar{X} - \theta \leq k\theta \\
+    \text{1. Lower bound: } \bar{X} - \theta \leq k\theta \implies \bar{X} \leq \theta + k\theta \implies \bar{X} \leq \theta(1+k) \implies \frac{\bar{X}}{1+k} \leq \theta \\
+    \text{2. Upper bound: } -k\theta \leq \bar{X} - \theta \implies \theta - k\theta \leq \bar{X} \implies \theta(1-k) \leq \bar{X} \implies \theta \leq \frac{\bar{X}}{1-k} \\
+    P\left( \frac{\bar{X}}{1 + \frac{z_\beta}{\sqrt{n}}} \leq \theta \leq \frac{\bar{X}}{1 - \frac{z_\beta}{\sqrt{n}}} \right) = 2\beta - 1
+\end{align*}
+$$
+
+#### Subtask 4
+
+$$
+\begin{align*}
+    S^2 = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2 \quad (\text{sample variance}) \\
+    \text{Replace } \theta \text{ with } S \text{ in the standardization formula} \\
+    T := \frac{\bar{X} - \theta}{S/\sqrt{n}} = \frac{\sqrt{n}(\bar{X}-\theta)}{S} \\
+    T \sim t_{n-1} \\
+    \text{Confidence intervals:} \\
+    P(T \le t_{\beta}) = \beta \\
+    P\left( |T| \le t_{\beta} \right) = 2\beta - 1 \\
+    P\left( \left| \frac{\sqrt{n}(\bar{X}-\theta)}{S} \right| \leq t_{\beta} \right) = 2\beta - 1 \\
+    P\left( -t_{\beta} \leq \frac{\sqrt{n}(\bar{X}-\theta)}{S} \leq t_{\beta} \right) = 2\beta - 1 \\
+    P\left( -t_{\beta} \frac{S}{\sqrt{n}} \leq \bar{X} - \theta \leq t_{\beta} \frac{S}{\sqrt{n}} \right) = 2\beta - 1 \\
+    P\left( \bar{X} - t_{\beta} \frac{S}{\sqrt{n}} \leq \theta \leq \bar{X} + t_{\beta} \frac{S}{\sqrt{n}} \right) = 2\beta - 1
+\end{align*}
+$$
+
+```{r}
+team_id <- 11
+set.seed(team_id)
+
+theta <- team_id / 10
+lambda <- 1 / theta
+
+# simulation parameters
+m <- 10000 # repetitions
+n <- 50    # sample size
+
+# significance levels alpha
+alphas <- c(0.1, 0.05, 0.01)
+
+cat("--- simulation parameters ---\n")
+cat("team id:", team_id, "\n")
+cat("true theta:", theta, "(lambda:", lambda, ")\n")
+cat("sample size (n):", n, "\n")
+cat("number of simulations (m):", m, "\n\n")
+
+# --- simulation ---
+
+# generate m samples, each size n, from exp(lambda)
+# each column is one sample
+samples_matrix <- matrix(rexp(n * m, rate = lambda), nrow = n, ncol = m)
+
+# compute statistics for each sample (each column)
+sample_means <- colMeans(samples_matrix) # vector of m sample means
+sample_vars <- apply(samples_matrix, 2, var) # vector of m sample variances
+
+# --- analysis for each alpha ---
+
+# list for storing results
+results_list <- list()
+
+for (alpha in alphas) {
+  conf_level <- 1 - alpha
+  cat("--- analysis for confidence level:", conf_level, "(alpha =", alpha, ") ---\n")
+
+  # --- method 1: exact (chi-square) ---
+  q1_chi <- qchisq(alpha / 2, df = 2 * n)
+  q2_chi <- qchisq(1 - alpha / 2, df = 2 * n)
+
+  lower1 <- (2 * n * sample_means) / q2_chi
+  upper1 <- (2 * n * sample_means) / q1_chi
+
+  coverage1 <- mean(lower1 < theta & upper1 > theta)
+  length1 <- mean(upper1 - lower1)
+
+  cat("method 1 (exact, chisq): coverage =",
+      format(coverage1, digits = 4), "| avg length =", format(length1, digits = 4), "\n")
+
+  # --- method 2: normal approximation (z-stat, plug-in) ---
+  z_crit <- qnorm(1 - alpha / 2)
+  margin2 <- z_crit * theta / sqrt(n) 
+
+  lower2 <- sample_means - margin2
+  upper2 <- sample_means + margin2
+
+  coverage2 <- mean(lower2 < theta & upper2 > theta)
+  length2 <- mean(upper2 - lower2)
+
+  cat("method 2 (z-stat, plug-in): coverage =",
+      format(coverage2, digits = 4), "| avg length =", format(length2, digits = 4), "\n")
+
+  # --- method 3: normal approximation (z-stat, inequality solved) ---
+  lower3 <- sample_means / (1 + z_crit / sqrt(n))
+  upper3 <- sample_means / (1 - z_crit / sqrt(n))
+
+  # exclude invalid cases when denominator <= 0
+  valid_intervals3 <- (1 - z_crit / sqrt(n)) > 0
+  coverage3 <- mean(lower3[valid_intervals3] < theta & upper3[valid_intervals3] > theta)
+  length3 <- mean(upper3[valid_intervals3] - lower3[valid_intervals3])
+
+  cat("method 3 (z-stat, solved): coverage =",
+      format(coverage3, digits = 4), "| avg length =", format(length3, digits = 4), "\n")
+
+  # --- method 4: student t-distribution ---
+  t_crit <- qt(1 - alpha / 2, df = n - 1)
+  margin4 <- t_crit * sqrt(sample_vars) / sqrt(n)
+
+  lower4 <- sample_means - margin4
+  upper4 <- sample_means + margin4
+
+  coverage4 <- mean(lower4 < theta & upper4 > theta)
+  length4 <- mean(upper4 - lower4)
+
+  cat("method 4 (t-stat, s): coverage =",
+      format(coverage4, digits = 4), "| avg length =", format(length4, digits = 4), "\n\n")
+
+  # save results
+  results_list[[as.character(conf_level)]] <- data.frame(
+    method = c("1 (exact, chisq)", "2 (z-stat, plug-in)", "3 (z-stat, solved)", "4 (t-stat, s)"),
+    confidence_level = conf_level,
+    empirical_coverage = c(coverage1, coverage2, coverage3, coverage4),
+    avg_length = c(length1, length2, length3, length4)
+  )
+}
+
+# merge all results
+final_results <- do.call(rbind, results_list)
+rownames(final_results) <- NULL
+```
+
+The key difference between the four methods is that **Method 1 is exact**, while **Methods 2, 3, and 4 are approximate**.
+
+### Method 1 (Chi-Squared, χ²)
+
+This method uses the exact distributional result:
+
+$$
+2\lambda n \bar{X} \sim \chi^2_{2n}
+$$
+
+Since the sampling distribution is known exactly, the empirical coverage closely matches the nominal confidence level.
+
+### Methods 2, 3, and 4 (Z-stat and t-stat)
+
+These methods rely on CLT:
+
+$$
+\bar{X} \approx N(\theta, \sigma^2/n)
+$$
+
+The exponential distribution is highly skewed, so convergence to normality is slow. With $n = 50$, the sampling distribution of $\bar{X}$ remains skewed.\
+All three methods use **symmetric** confidence intervals, which do not match this asymmetric distribution, resulting in under-coverage.
+
+Method 4 adjusts for the estimation of variance but still does not correct for skewness.
+
+------------------------------------------------------------------------
+
+## 2. Analysis of Simulation Results
+
+### (a) Coverage
+
+-   **Method 1 (Exact, Chi-Squared):**\
+    Best performance. Coverage values (0.9076, 0.9559, 0.9896) closely match the nominal levels (0.90, 0.95, 0.99).
+
+-   **Method 3 (Z-stat, solved):**\
+    Very good coverage, close to nominal.
+
+-   **Method 2 (Z-stat, plug-in)** and **Method 4 (t-stat):**\
+    Both show consistent **under-coverage**.\
+    Intervals are too narrow.
+
+### (b) Interval Length (Precision)
+
+-   **Shortest intervals:** Method 2, Method 4\
+-   **Longest intervals:** Method 3\
+-   **Method 1:** Middle length
+
+------------------------------------------------------------------------
+
+# Problem 2
+
+# Problem 3
+
+# Conclusions
+
+## Problem 1
+
+**Method 1 (Exact Chi-Squared) is the best overall method.**
+
+-   Theoretically exact\
+-   Correct coverage\
+-   Good precision\
+-   Methods 2 and 4 under-cover; Method 3 is too wide
+
+### Effect of Sample Size $n$
+
+If $n$ increases:
+
+-   All intervals become shorter\
+-   Approximate methods improve\
+-   Coverage approaches the nominal level
+
+If $n$ decreases:
+
+-   Skewness increases\
+-   Under-coverage of Methods 2 and 4 worsens\
+-   Method 1 remains reliable
