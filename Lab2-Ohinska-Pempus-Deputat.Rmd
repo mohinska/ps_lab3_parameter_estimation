@@ -235,7 +235,169 @@ Method 4 adjusts for the estimation of variance but still does not correct for s
 
 # Problem 2
 
+Confidence Intervals for Poisson Distribution $P(\theta)$
+
+### (1) Problem formulation
+
+We consider a random sample
+
+$X_1, X_2, \ldots, X_n \sim \text{Poisson}(\theta)$
+
+where the unknown parameter is the mean $\theta$.
+
+The sample mean
+
+$\bar{X} = \frac{1}{n} \sum_{i=1}^{n} X_i$
+
+is an unbiased estimator of $\theta$.
+
+The task is to verify whether the following three confidence interval
+
+methods contain the true parameter $\theta$ with probability close to
+
+the nominal confidence level $1 - \alpha$.
+
+### (2) Normal approximation CI (using true variance $\theta$):
+
+$\bar{X} \pm z_{\alpha/2}\sqrt{\frac{\theta}{n}}$
+
+```{r}
+team_id <- 11  
+set.seed(team_id)
+
+theta <- team_id / 10     # True Poisson mean
+alphas <- c(0.1, 0.05, 0.01)
+ns <- c(20, 50, 200)
+m <- 5000  # repetitions
+
+```
+
+```{r}
+CI_normal_true <- function(xbar, n, alpha, theta) {
+  z <- qnorm(1 - alpha/2)
+  half <- z * sqrt(theta/n)
+  c(xbar - half, xbar + half)
+}
+```
+
+### (3) Normal CI solved for $\theta$ (removes dependence on unknown $\theta$).
+
+We solve the inequality:
+
+$|\theta - \bar{X}| \le z_{\alpha/2}\sqrt{\frac{\theta}{n}}$
+
+which yields a quadratic inequality and a CI independent of the true $\theta$.
+
+```{r}
+CI_normal_solved <- function(xbar, n, alpha) {
+  z <- qnorm(1 - alpha/2)
+  A <- 1/n
+  B <- -2*xbar - z^2/n
+  C <- xbar^2
+  disc <- B^2 - 4*A*C
+  L <- (-B - sqrt(disc)) / (2*A)
+  U <- (-B + sqrt(disc)) / (2*A)
+  c(L, U)
+}
+```
+
+### (4) t-based CI using sample variance.
+
+Since Poisson variance equals the mean $\theta$, we estimate it:
+
+$s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(X_i - \bar{X})^2$
+
+```{r}
+CI_t <- function(x, alpha) {
+  n <- length(x)
+  xbar <- mean(x)
+  s2 <- var(x)
+  tval <- qt(1 - alpha/2, df = n - 1)
+  half <- tval * sqrt(s2 / n)
+  c(xbar - half, xbar + half)
+}
+```
+
+### (5) Results
+
+The CI becomes:
+
+$\bar{X} \pm t_{n-1,\alpha/2}\sqrt{\frac{s^2}{n}}$
+
+The assignment requires experimentally checking:
+
+• Whether each CI contains $\theta$ approximately $100(1-\alpha)\%$ of the time
+
+• Comparing CI lengths
+
+• Recommending the best method
+
+We repeat the CI computation $m = 5000$ times and measure the
+
+proportion of times $\theta$ is inside the interval.
+
+We test for $\alpha = 0.1, 0.05, 0.01$ and $n = 20, 50, 200$.
+
+```{r}
+
+results <- list()
+
+for (n in ns) {
+  for (alpha in alphas) {
+    covered2 <- numeric(m)
+    covered3 <- numeric(m)
+    covered4 <- numeric(m)
+
+    lengths2 <- numeric(m)
+    lengths3 <- numeric(m)
+    lengths4 <- numeric(m)
+
+    for (i in 1:m) {
+      x <- rpois(n, theta)
+      xbar <- mean(x)
+
+      # (2)
+      ci2 <- CI_normal_true(xbar, n, alpha, theta)
+      covered2[i] <- (theta >= ci2[1] & theta <= ci2[2])
+      lengths2[i] <- ci2[2] - ci2[1]
+
+      # (3)
+      ci3 <- CI_normal_solved(xbar, n, alpha)
+      covered3[i] <- (theta >= ci3[1] & theta <= ci3[2])
+      lengths3[i] <- ci3[2] - ci3[1]
+
+      # (4)
+      ci4 <- CI_t(x, alpha)
+      covered4[i] <- (theta >= ci4[1] & theta <= ci4[2])
+      lengths4[i] <- ci4[2] - ci4[1]
+    }
+
+    results[[paste(n, alpha)]] <- list(
+      coverage = c(
+        Normal_true = mean(covered2),
+        Quadratic = mean(covered3),
+        t_based = mean(covered4)
+      ),
+      lengths = c(
+        Normal_true = mean(lengths2),
+        Quadratic = mean(lengths3),
+        t_based = mean(lengths4)
+      )
+    )
+  }
+}
+
+
+for (name in names(results)) {
+  cat("\nSample size n, alpha =", name, "\n")
+  print(results[[name]])
+}
+```
+------------------------------------------------------------------------
+
 # Problem 3
+
+------------------------------------------------------------------------
 
 # Conclusions
 
@@ -261,3 +423,7 @@ If $n$ decreases:
 -   Skewness increases\
 -   Under-coverage of Methods 2 and 4 worsens\
 -   Method 1 remains reliable
+
+## Problem 2
+
+## Problem 3
