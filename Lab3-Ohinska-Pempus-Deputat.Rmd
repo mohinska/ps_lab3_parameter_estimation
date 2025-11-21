@@ -16,7 +16,7 @@ output:
 -   Марина Огінська: Implementation of Problem 2 (Estimated effort: 33%)
 -   Роман Пемпусь: Implementation of Problem 3 (Estimated effort: 33%)
 
-## Problem 1
+# Problem 1
 
 ### Deriving confidence intervals
 
@@ -134,7 +134,7 @@ for (alpha in alphas) {
 
   # --- method 2: normal approximation (z-stat, plug-in) ---
   z_crit <- qnorm(1 - alpha / 2)
-  margin2 <- z_crit * theta / sqrt(n) 
+  margin2 <- z_crit * theta / sqrt(n)
 
   lower2 <- sample_means - margin2
   upper2 <- sample_means + margin2
@@ -156,7 +156,7 @@ for (alpha in alphas) {
 
   cat("method 3 (z-stat, solved): coverage =",
       format(coverage3, digits = 4), "| avg length =", format(length3, digits = 4), "\n")
-e
+
   # --- method 4: student t-distribution ---
   t_crit <- qt(1 - alpha / 2, df = n - 1)
   margin4 <- t_crit * sqrt(sample_vars) / sqrt(n)
@@ -209,8 +209,6 @@ All three methods use **symmetric** confidence intervals, which do not match thi
 
 Method 4 adjusts for the estimation of variance but still does not correct for skewness.
 
-------------------------------------------------------------------------
-
 ## 2. Analysis of Simulation Results
 
 ### (a) Coverage
@@ -262,7 +260,7 @@ the nominal confidence level $1 - \alpha$.
 $\bar{X} \pm z_{\alpha/2}\sqrt{\frac{\theta}{n}}$
 
 ```{r}
-team_id <- 11  
+team_id <- 11
 set.seed(team_id)
 
 theta <- team_id / 10     # True Poisson mean
@@ -398,7 +396,295 @@ for (name in names(results)) {
 
 # Problem 3
 
-------------------------------------------------------------------------
+```{r}
+#generating dataset(code from task description)
+set.seed(42)
+n <- 100
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset <- rnorm(n, mean = mu, sd = sigma)
+head(dataset)
+## [1] 12.741917 8.870604 10.726257 11.265725 10.808537 9.787751
+cat("Population Mean (mu):", mu, "\n")
+## Population Mean (mu): 10
+cat("Population Variance (sigma_squared):", sigma_squared, "\n")
+## Population Variance (sigma_squared): 4
+sample_mean <- mean(dataset)
+sample_variance <- var(dataset)
+cat("Sample Mean:", sample_mean, "\n")
+## Sample Mean: 10.06503
+cat("Sample Variance:", sample_variance, "\n")
+#----------------------------------------------------
+```
+
+## a) use provided formulas to estimate variance
+
+since numerator is the same in both formulas its good for us to calculate it separately
+
+```{r}
+sum_deviations <- sum((dataset - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n
+
+#printing results
+cat("n-1 estimator:", var_es_1, "\n")
+cat("n estimator:", var_es_2, "\n")
+
+
+```
+
+## b) finding estimates for different n
+
+```{r}
+
+
+# n = 10
+set.seed(42)
+n_1 <- 10
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset_1 <- rnorm(n_1, mean = mu, sd = sigma)
+sample_mean <- mean(dataset_1)
+sample_variance_1 <- var(dataset_1)
+sum_deviations <- sum((dataset_1 - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n_1-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n_1
+
+#printing results
+cat("n = 10 Population variance:", sigma_squared, "\n")
+cat("n = 10 Sample variance:", sample_variance_1, "\n")
+cat("n = 10, n-1 estimator:", var_es_1, "\n")
+cat("n = 10, n estimator:", var_es_2, "\n")
+
+```
+
+```{r}
+# n = 50
+set.seed(42)
+n_1 <- 50
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset_1 <- rnorm(n_1, mean = mu, sd = sigma)
+sample_mean <- mean(dataset_1)
+sample_variance_1 <- var(dataset_1)
+sum_deviations <- sum((dataset_1 - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n_1-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n_1
+
+#printing results
+cat("n = 50 Population variance:", sigma_squared, "\n")
+cat("n = 50 Sample variance:", sample_variance_1, "\n")
+cat("n = 50, n-1 estimator:", var_es_1, "\n")
+cat("n = 50, n estimator:", var_es_2, "\n")
+```
+
+```{r}
+# n = 100
+set.seed(42)
+n_1 <- 100
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset_1 <- rnorm(n_1, mean = mu, sd = sigma)
+sample_mean <- mean(dataset_1)
+sample_variance_1 <- var(dataset_1)
+sum_deviations <- sum((dataset_1 - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n_1-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n_1
+
+#printing results
+cat("n = 100 Population variance:", sigma_squared, "\n")
+cat("n = 100 Sample variance:", sample_variance_1, "\n")
+cat("n = 100, n-1 estimator:", var_es_1, "\n")
+cat("n = 100, n estimator:", var_es_2, "\n")
+```
+
+```{r}
+# n = 1000
+set.seed(42)
+n_1 <- 1000
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset_1 <- rnorm(n_1, mean = mu, sd = sigma)
+sample_mean <- mean(dataset_1)
+sample_variance_1 <- var(dataset_1)
+sum_deviations <- sum((dataset_1 - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n_1-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n_1
+
+#printing results
+cat("n = 1000 Population variance:", sigma_squared, "\n")
+cat("n = 1000 Sample variance:", sample_variance_1, "\n")
+cat("n = 1000, n-1 estimator:", var_es_1, "\n")
+cat("n = 1000, n estimator:", var_es_2, "\n")
+```
+
+## c) finding biases of both estimators
+
+Bias(σ2n) = E(σ2n)−σ2 and Bias(σ2n−1) = E(σ2n−1)−σ2;
+
+we will find our expected values using SLLN and generated samples
+
+```{r}
+n_simulations <- 10000
+
+results <- replicate(n_simulations, {
+  dataset_i <- rnorm(n_1, mean = mu, sd = sigma)
+
+  sample_mean <- mean(dataset_i)
+  sum_deviations <- sum((dataset_i - sample_mean)^2)
+
+  var_n_minus_1 <- sum_deviations / (n_1 - 1)
+  var_n         <- sum_deviations / n_1
+
+  c(est_n_minus_1 = var_n_minus_1, est_n = var_n)
+})
+
+expected_values <- rowMeans(results)
+
+
+bias_n_minus_1 <- expected_values["est_n_minus_1"] - sigma_squared
+bias_n         <- expected_values["est_n"]         - sigma_squared
+
+cat("Bias of n-1 estimator:", bias_n_minus_1, "\n")
+cat("Bias of n estimator:  ", bias_n, "\n")
+
+
+```
+
+## d) explaining result
+
+as we can see n-1 estimator is more accurate and has almost 0 bias comparing to
+
+n estimator, as expected, but it != 0 since number of our samples is only 10000
+
+## e) deriving expected value of estimators analytically+finding biases
+
+sum((xi - sample_mean)\*\*2) is in formulas of both estimators so it would be helpful to
+
+calculate its expected value separately, lets do this:
+
+first, it would be helpful to transform this sum
+
+$$
+\begin{aligned}
+\text{I. Transforming sum} \\
+\sum_{i=1}^{n} (X_i - \mu)^2 &= \sum_{i=1}^{n} \left[ (X_i - \bar{X}) + (\bar{X} - \mu) \right]^2 \\
+&= \sum_{i=1}^{n} (X_i - \bar{X})^2 + 2(\bar{X} - \mu) \underbrace{\sum_{i=1}^{n} (X_i - \bar{X})}_{0} + \sum_{i=1}^{n} (\bar{X} - \mu)^2 \\
+\sum_{i=1}^{n} (X_i - \mu)^2 &= \sum_{i=1}^{n} (X_i - \bar{X})^2 + n(\bar{X} - \mu)^2 \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{II. Finding expected value of sum} \\
+\mathbb{E}\left[\sum (X_i - \mu)^2\right] &= \mathbb{E}\left[\sum (X_i - \bar{X})^2\right] + \mathbb{E}\left[n(\bar{X} - \mu)^2\right] \\
+n\sigma^2 &= \mathbb{E}\left[\sum (X_i - \bar{X})^2\right] + n \cdot \frac{\sigma^2}{n} \\
+n\sigma^2 &= \mathbb{E}\left[\sum (X_i - \bar{X})^2\right] + \sigma^2 \\
+\mathbb{E}\left[\sum (X_i - \bar{X})^2\right] &= \mathbf{(n-1)\sigma^2} \quad
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{Derivation of the Variance of the Sample Mean } \bar{X} \text{(additional proof)}: \\
+\\
+\text {E}\left[(\bar{X} - \mu)^2\right] = {Var}(\bar{X}) &= \text{Var}\left( \frac{1}{n} \sum_{i=1}^{n} X_i \right) \\
+\\
+\text{Using the property } \text{Var}(cX) = c^2 \text{Var}(X): \\
+&= \frac{1}{n^2} \text{Var}\left( \sum_{i=1}^{n} X_i \right) \\
+\\
+\text{Since } X_i \text{ are independent, } \text{Var}(\sum X_i) = \sum \text{Var}(X_i): \\
+&= \frac{1}{n^2} \sum_{i=1}^{n} \text{Var}(X_i) \\
+\\
+\text{Since each } X_i \text{ has the same variance } \sigma^2: \\
+&= \frac{1}{n^2} \sum_{i=1}^{n} \sigma^2 \\
+\\
+\text{Summing a constant } n \text{ times:} \\
+&= \frac{1}{n^2} (n \cdot \sigma^2) \\
+\\
+\text{Final Result:} \\
+\text{Var}(\bar{X}) &= \frac{\sigma^2}{n}
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{III. Calculating expected value of estimators} \\
+\mathbf{E[\hat{\sigma}^2_{n-1}]} &= \mathbb{E}\left[\frac{1}{n-1} \sum (X_i - \bar{X})^2\right] = \frac{1}{n-1} \cdot (n-1)\sigma^2 = \mathbf{\sigma^2} \quad \\[1em]
+\mathbf{E[\hat{\sigma}^2_{n}]} &= \mathbb{E}\left[\frac{1}{n} \sum (X_i - \bar{X})^2\right] = \frac{1}{n} \cdot (n-1)\sigma^2 = \mathbf{\sigma^2 \frac{n-1}{n}} \quad
+\end{aligned}
+$$
+
+## f) finding Bias mathematically
+
+$$
+\begin{aligned}
+\textbf{1. Bias of the Estimator } \hat{\sigma}^2_n \text{ (dividing by } n\text{):} \\
+\ \\
+\\
+\text{Bias}(\hat{\sigma}^2_n) &= E[\hat{\sigma}^2_n] - \sigma^2 \\
+&= E\left[ \frac{1}{n} \sum_{i=1}^{n} (X_i - \bar{X})^2 \right] - \sigma^2 \\
+&= \frac{1}{n} E\left[ \sum_{i=1}^{n} (X_i - \bar{X})^2 \right] - \sigma^2 \\
+\\
+\text{Substituting the result } E[\sum(X_i - \bar{X})^2] = (n-1)\sigma^2: \\
+&= \frac{1}{n} (n-1)\sigma^2 - \sigma^2 \\
+&= \left( \frac{n-1}{n} - 1 \right) \sigma^2 \\
+&= \left( 1 - \frac{1}{n} - 1 \right) \sigma^2 \\
+&= \mathbf{-\frac{4}{n}} \quad (\text{Biased})
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\textbf{2. Bias of the Estimator } \hat{\sigma}^2_{n-1} \text{ (dividing by } n-1\text{):} \\
+\text{This is the unbiased sample variance estimator } (S^2). \\
+\\
+\text{Bias}(\hat{\sigma}^2_{n-1}) &= E[\hat{\sigma}^2_{n-1}] - \sigma^2 \\
+&= E\left[ \frac{1}{n-1} \sum_{i=1}^{n} (X_i - \bar{X})^2 \right] - \sigma^2 \\
+&= \frac{1}{n-1} E\left[ \sum_{i=1}^{n} (X_i - \bar{X})^2 \right] - \sigma^2 \\
+\\
+\text{Substituting the result } E[\sum(X_i - \bar{X})^2] = (n-1)\sigma^2: \\
+&= \frac{1}{n-1} (n-1)\sigma^2 - \sigma^2 \\
+&= \sigma^2 - \sigma^2 \\
+&= 4 - 4 \\
+&= \mathbf{0} \quad (\text{Unbiased})
+\end{aligned}
+$$
+
+## g) results:
+
+results are expected - estimator of sample variance with n-1 in denominator
+
+turned to be more precise and its bias going -\> 0 as n -\> inf, that we showed in part c)
+
+also we showed mathematically that this estimator is unbiased, as expected
+
+## so practical and theoretical results coincide, in fact
 
 # Conclusions
 
@@ -459,3 +745,13 @@ If n decreases:
 -   Method 2 remains reliable
 
 ## Problem 3
+
+Bias Analysis: Analytically, we proved that σ\^2(n−1) is an unbiased estimator of the population variance, whereas σ\^2(n) is biased.
+
+Nature of Bias: The biased estimator systematically produces values lower than the true parameter (negative bias of −σ\^2/n).
+
+This occurs because the sample mean minimizes the sum of squared deviations, slightly reducing the calculated variability compared to the true population mean.
+
+Simulation Verification: Simulations performed in R aligned with our theoretical derivations.
+
+Effect of n: As the sample size n increases, the bias −σ\^2/n approaches zero, meaning the distinction between the two estimators becomes less significant for large datasets.
