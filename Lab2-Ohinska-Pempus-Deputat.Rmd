@@ -156,7 +156,7 @@ for (alpha in alphas) {
 
   cat("method 3 (z-stat, solved): coverage =",
       format(coverage3, digits = 4), "| avg length =", format(length3, digits = 4), "\n")
-
+e
   # --- method 4: student t-distribution ---
   t_crit <- qt(1 - alpha / 2, df = n - 1)
   margin4 <- t_crit * sqrt(sample_vars) / sqrt(n)
@@ -393,6 +393,7 @@ for (name in names(results)) {
   print(results[[name]])
 }
 ```
+
 ------------------------------------------------------------------------
 
 # Problem 3
@@ -425,5 +426,36 @@ If $n$ decreases:
 -   Method 1 remains reliable
 
 ## Problem 2
+
+**Method 2 (Normal CI with true variance) is the best overall method.**
+
+-   Correct coverage
+
+-   Shortest intervals
+
+-   Stable across all n
+
+**Method 3 (Quadratic)** is conservative and often too wide.\
+**Method 4 (t-based)** under-covers and has the widest intervals.
+
+**Effect of Sample Size** n
+
+If n increases:
+
+-   All intervals become shorter
+
+-   Coverage improves
+
+-   Methods 3 and 4 approach nominal levels
+
+If n decreases:
+
+-   Poisson skewness increases\
+
+-   Method 4 under-coverage becomes severe\
+
+-   Method 3 becomes overly wide\
+
+-   Method 2 remains reliable
 
 ## Problem 3
