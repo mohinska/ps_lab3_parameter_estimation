@@ -1,0 +1,727 @@
+---
+title: "Lab 3"
+author: "Team 11: Марина Огінська, Роман Пемпусь, Антон Депутат"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+# Lab 3: Parameter estimation and Unbiasedness of Estimators
+
+## Work Breakdown Structure
+
+-   Антон Депутат: Implementation of Problem 1 (Estimated effort: 33%)
+-   Марина Огінська: Implementation of Problem 2 (Estimated effort: 33%)
+-   Роман Пемпусь: Implementation of Problem 3 (Estimated effort: 33%)
+
+## Problem 1
+
+### Deriving confidence intervals
+
+#### Subtask 1
+
+$$
+\begin{align*}
+    X_i \sim \mathcal{E}(\lambda)\\
+    2\lambda X_i \sim \mathcal{E}(1/2) \sim \Gamma(1, 1/2) \sim \chi^2_2 \\
+    2\lambda \sum_{i=1}^n X_i = \frac{2n\bar{X}}{\theta} \sim \chi^2_{2n} \\
+    \text{Confidence intervals:} \\
+    P\left( \chi^2_{\alpha/2, 2n} \leq \frac{2n\bar{X}}{\theta} \leq \chi^2_{1-\alpha/2, 2n} \right) = 1-\alpha \\
+    P\left( \frac{2n\bar{X}}{\chi^2_{1-\alpha/2, 2n}} \leq \theta \leq \frac{2n\bar{X}}{\chi^2_{\alpha/2, 2n}} \right) = 1-\alpha
+\end{align*}
+$$
+
+#### Subtask 2
+
+$$
+\begin{align*}
+    Z := \frac{\sqrt{n}(\bar{X}-\theta)}{\theta} \sim \mathcal{N}(0,1) \text{ (by CLT)} \\
+    P(Z \le z_\beta) = \beta \\
+    P(|Z| \le z_\beta) = P(-z_\beta \le Z \le z_\beta) = 2\beta - 1 \\
+    \text{Confidence intervals:} \\
+    P\left( \left| \frac{\sqrt{n}(\bar{X}-\theta)}{\theta} \right| \le z_\beta \right) = 2\beta - 1 \\
+    P\left( |\bar{X} - \theta| \leq z_\beta \frac{\theta}{\sqrt{n}} \right) = 2\beta - 1 \\
+    P\left( -z_\beta \frac{\theta}{\sqrt{n}} \leq \bar{X} - \theta \leq z_\beta \frac{\theta}{\sqrt{n}} \right) = 2\beta - 1 \\
+    \bar{X} \pm z_\beta \frac{\theta}{\sqrt{n}} \text{ is the confidence interval for } \theta \text{ of th econfidence level } 2\beta - 1
+\end{align*}
+$$
+
+#### Subtask 3
+
+$$
+\begin{align*}
+    \text{From previous subtask: } P\left( |\bar{X} - \theta| \leq z_\beta \frac{\theta}{\sqrt{n}} \right) = 2\beta - 1 \\
+    \text{Let } k = \frac{z_\beta}{\sqrt{n}}\\
+     |\theta - \bar{X}| \leq k\theta \\
+    -k\theta \leq \bar{X} - \theta \leq k\theta \\
+    \text{1. Lower bound: } \bar{X} - \theta \leq k\theta \implies \bar{X} \leq \theta + k\theta \implies \bar{X} \leq \theta(1+k) \implies \frac{\bar{X}}{1+k} \leq \theta \\
+    \text{2. Upper bound: } -k\theta \leq \bar{X} - \theta \implies \theta - k\theta \leq \bar{X} \implies \theta(1-k) \leq \bar{X} \implies \theta \leq \frac{\bar{X}}{1-k} \\
+    P\left( \frac{\bar{X}}{1 + \frac{z_\beta}{\sqrt{n}}} \leq \theta \leq \frac{\bar{X}}{1 - \frac{z_\beta}{\sqrt{n}}} \right) = 2\beta - 1
+\end{align*}
+$$
+
+#### Subtask 4
+
+$$
+\begin{align*}
+    S^2 = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2 \quad (\text{sample variance}) \\
+    \text{Replace } \theta \text{ with } S \text{ in the standardization formula} \\
+    T := \frac{\bar{X} - \theta}{S/\sqrt{n}} = \frac{\sqrt{n}(\bar{X}-\theta)}{S} \\
+    T \sim t_{n-1} \\
+    \text{Confidence intervals:} \\
+    P(T \le t_{\beta}) = \beta \\
+    P\left( |T| \le t_{\beta} \right) = 2\beta - 1 \\
+    P\left( \left| \frac{\sqrt{n}(\bar{X}-\theta)}{S} \right| \leq t_{\beta} \right) = 2\beta - 1 \\
+    P\left( -t_{\beta} \leq \frac{\sqrt{n}(\bar{X}-\theta)}{S} \leq t_{\beta} \right) = 2\beta - 1 \\
+    P\left( -t_{\beta} \frac{S}{\sqrt{n}} \leq \bar{X} - \theta \leq t_{\beta} \frac{S}{\sqrt{n}} \right) = 2\beta - 1 \\
+    P\left( \bar{X} - t_{\beta} \frac{S}{\sqrt{n}} \leq \theta \leq \bar{X} + t_{\beta} \frac{S}{\sqrt{n}} \right) = 2\beta - 1
+\end{align*}
+$$
+
+```{r}
+team_id <- 11
+set.seed(team_id)
+
+theta <- team_id / 10
+lambda <- 1 / theta
+
+# simulation parameters
+m <- 10000 # repetitions
+n <- 50    # sample size
+
+# significance levels alpha
+alphas <- c(0.1, 0.05, 0.01)
+
+cat("--- simulation parameters ---\n")
+cat("team id:", team_id, "\n")
+cat("true theta:", theta, "(lambda:", lambda, ")\n")
+cat("sample size (n):", n, "\n")
+cat("number of simulations (m):", m, "\n\n")
+
+# --- simulation ---
+
+# generate m samples, each size n, from exp(lambda)
+# each column is one sample
+samples_matrix <- matrix(rexp(n * m, rate = lambda), nrow = n, ncol = m)
+
+# compute statistics for each sample (each column)
+sample_means <- colMeans(samples_matrix) # vector of m sample means
+sample_vars <- apply(samples_matrix, 2, var) # vector of m sample variances
+
+# --- analysis for each alpha ---
+
+# list for storing results
+results_list <- list()
+
+for (alpha in alphas) {
+  conf_level <- 1 - alpha
+  cat("--- analysis for confidence level:", conf_level, "(alpha =", alpha, ") ---\n")
+
+  # --- method 1: exact (chi-square) ---
+  q1_chi <- qchisq(alpha / 2, df = 2 * n)
+  q2_chi <- qchisq(1 - alpha / 2, df = 2 * n)
+
+  lower1 <- (2 * n * sample_means) / q2_chi
+  upper1 <- (2 * n * sample_means) / q1_chi
+
+  coverage1 <- mean(lower1 < theta & upper1 > theta)
+  length1 <- mean(upper1 - lower1)
+
+  cat("method 1 (exact, chisq): coverage =",
+      format(coverage1, digits = 4), "| avg length =", format(length1, digits = 4), "\n")
+
+  # --- method 2: normal approximation (z-stat, plug-in) ---
+  z_crit <- qnorm(1 - alpha / 2)
+  margin2 <- z_crit * theta / sqrt(n) 
+
+  lower2 <- sample_means - margin2
+  upper2 <- sample_means + margin2
+
+  coverage2 <- mean(lower2 < theta & upper2 > theta)
+  length2 <- mean(upper2 - lower2)
+
+  cat("method 2 (z-stat, plug-in): coverage =",
+      format(coverage2, digits = 4), "| avg length =", format(length2, digits = 4), "\n")
+
+  # --- method 3: normal approximation (z-stat, inequality solved) ---
+  lower3 <- sample_means / (1 + z_crit / sqrt(n))
+  upper3 <- sample_means / (1 - z_crit / sqrt(n))
+
+  # exclude invalid cases when denominator <= 0
+  valid_intervals3 <- (1 - z_crit / sqrt(n)) > 0
+  coverage3 <- mean(lower3[valid_intervals3] < theta & upper3[valid_intervals3] > theta)
+  length3 <- mean(upper3[valid_intervals3] - lower3[valid_intervals3])
+
+  cat("method 3 (z-stat, solved): coverage =",
+      format(coverage3, digits = 4), "| avg length =", format(length3, digits = 4), "\n")
+
+  # --- method 4: student t-distribution ---
+  t_crit <- qt(1 - alpha / 2, df = n - 1)
+  margin4 <- t_crit * sqrt(sample_vars) / sqrt(n)
+
+  lower4 <- sample_means - margin4
+  upper4 <- sample_means + margin4
+
+  coverage4 <- mean(lower4 < theta & upper4 > theta)
+  length4 <- mean(upper4 - lower4)
+
+  cat("method 4 (t-stat, s): coverage =",
+      format(coverage4, digits = 4), "| avg length =", format(length4, digits = 4), "\n\n")
+
+  # save results
+  results_list[[as.character(conf_level)]] <- data.frame(
+    method = c("1 (exact, chisq)", "2 (z-stat, plug-in)", "3 (z-stat, solved)", "4 (t-stat, s)"),
+    confidence_level = conf_level,
+    empirical_coverage = c(coverage1, coverage2, coverage3, coverage4),
+    avg_length = c(length1, length2, length3, length4)
+  )
+}
+
+# merge all results
+final_results <- do.call(rbind, results_list)
+rownames(final_results) <- NULL
+```
+
+The key difference between the four methods is that **Method 1 is exact**, while **Methods 2, 3, and 4 are approximate**.
+
+### Method 1 (Chi-Squared, χ²)
+
+This method uses the exact distributional result:
+
+$$
+2\lambda n \bar{X} \sim \chi^2_{2n}
+$$
+
+Since the sampling distribution is known exactly, the empirical coverage closely matches the nominal confidence level.
+
+### Methods 2, 3, and 4 (Z-stat and t-stat)
+
+These methods rely on CLT:
+
+$$
+\bar{X} \approx N(\theta, \sigma^2/n)
+$$
+
+The exponential distribution is highly skewed, so convergence to normality is slow. With $n = 50$, the sampling distribution of $\bar{X}$ remains skewed.\
+All three methods use **symmetric** confidence intervals, which do not match this asymmetric distribution, resulting in under-coverage.
+
+Method 4 adjusts for the estimation of variance but still does not correct for skewness.
+
+------------------------------------------------------------------------
+
+## 2. Analysis of Simulation Results
+
+### (a) Coverage
+
+-   **Method 1 (Exact, Chi-Squared):**\
+    Best performance. Coverage values (0.9076, 0.9559, 0.9896) closely match the nominal levels (0.90, 0.95, 0.99).
+
+-   **Method 3 (Z-stat, solved):**\
+    Very good coverage, close to nominal.
+
+-   **Method 2 (Z-stat, plug-in)** and **Method 4 (t-stat):**\
+    Both show consistent **under-coverage**.\
+    Intervals are too narrow.
+
+### (b) Interval Length (Precision)
+
+-   **Shortest intervals:** Method 2, Method 4\
+-   **Longest intervals:** Method 3\
+-   **Method 1:** Middle length
+
+------------------------------------------------------------------------
+
+# Problem 2
+
+Confidence Intervals for Poisson Distribution $P(\theta)$
+
+### (1) Problem formulation
+
+We consider a random sample
+
+$X_1, X_2, \ldots, X_n \sim \text{Poisson}(\theta)$
+
+where the unknown parameter is the mean $\theta$.
+
+The sample mean
+
+$\bar{X} = \frac{1}{n} \sum_{i=1}^{n} X_i$
+
+is an unbiased estimator of $\theta$.
+
+The task is to verify whether the following three confidence interval
+
+methods contain the true parameter $\theta$ with probability close to
+
+the nominal confidence level $1 - \alpha$.
+
+### (2) Normal approximation CI (using true variance $\theta$):
+
+$\bar{X} \pm z_{\alpha/2}\sqrt{\frac{\theta}{n}}$
+
+```{r}
+team_id <- 11  
+set.seed(team_id)
+
+theta <- team_id / 10     # True Poisson mean
+alphas <- c(0.1, 0.05, 0.01)
+ns <- c(20, 50, 200)
+m <- 5000  # repetitions
+
+```
+
+```{r}
+CI_normal_true <- function(xbar, n, alpha, theta) {
+  z <- qnorm(1 - alpha/2)
+  half <- z * sqrt(theta/n)
+  c(xbar - half, xbar + half)
+}
+```
+
+### (3) Normal CI solved for $\theta$ (removes dependence on unknown $\theta$).
+
+We solve the inequality:
+
+$|\theta - \bar{X}| \le z_{\alpha/2}\sqrt{\frac{\theta}{n}}$
+
+which yields a quadratic inequality and a CI independent of the true $\theta$.
+
+```{r}
+CI_normal_solved <- function(xbar, n, alpha) {
+  z <- qnorm(1 - alpha/2)
+  A <- 1/n
+  B <- -2*xbar - z^2/n
+  C <- xbar^2
+  disc <- B^2 - 4*A*C
+  L <- (-B - sqrt(disc)) / (2*A)
+  U <- (-B + sqrt(disc)) / (2*A)
+  c(L, U)
+}
+```
+
+### (4) t-based CI using sample variance.
+
+Since Poisson variance equals the mean $\theta$, we estimate it:
+
+$s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(X_i - \bar{X})^2$
+
+```{r}
+CI_t <- function(x, alpha) {
+  n <- length(x)
+  xbar <- mean(x)
+  s2 <- var(x)
+  tval <- qt(1 - alpha/2, df = n - 1)
+  half <- tval * sqrt(s2 / n)
+  c(xbar - half, xbar + half)
+}
+```
+
+### (5) Results
+
+The CI becomes:
+
+$\bar{X} \pm t_{n-1,\alpha/2}\sqrt{\frac{s^2}{n}}$
+
+The assignment requires experimentally checking:
+
+• Whether each CI contains $\theta$ approximately $100(1-\alpha)\%$ of the time
+
+• Comparing CI lengths
+
+• Recommending the best method
+
+We repeat the CI computation $m = 5000$ times and measure the
+
+proportion of times $\theta$ is inside the interval.
+
+We test for $\alpha = 0.1, 0.05, 0.01$ and $n = 20, 50, 200$.
+
+```{r}
+
+results <- list()
+
+for (n in ns) {
+  for (alpha in alphas) {
+    covered2 <- numeric(m)
+    covered3 <- numeric(m)
+    covered4 <- numeric(m)
+
+    lengths2 <- numeric(m)
+    lengths3 <- numeric(m)
+    lengths4 <- numeric(m)
+
+    for (i in 1:m) {
+      x <- rpois(n, theta)
+      xbar <- mean(x)
+
+      # (2)
+      ci2 <- CI_normal_true(xbar, n, alpha, theta)
+      covered2[i] <- (theta >= ci2[1] & theta <= ci2[2])
+      lengths2[i] <- ci2[2] - ci2[1]
+
+      # (3)
+      ci3 <- CI_normal_solved(xbar, n, alpha)
+      covered3[i] <- (theta >= ci3[1] & theta <= ci3[2])
+      lengths3[i] <- ci3[2] - ci3[1]
+
+      # (4)
+      ci4 <- CI_t(x, alpha)
+      covered4[i] <- (theta >= ci4[1] & theta <= ci4[2])
+      lengths4[i] <- ci4[2] - ci4[1]
+    }
+
+    results[[paste(n, alpha)]] <- list(
+      coverage = c(
+        Normal_true = mean(covered2),
+        Quadratic = mean(covered3),
+        t_based = mean(covered4)
+      ),
+      lengths = c(
+        Normal_true = mean(lengths2),
+        Quadratic = mean(lengths3),
+        t_based = mean(lengths4)
+      )
+    )
+  }
+}
+
+
+for (name in names(results)) {
+  cat("\nSample size n, alpha =", name, "\n")
+  print(results[[name]])
+}
+```
+------------------------------------------------------------------------
+
+# Problem 3
+```{r}
+#generating dataset(code from task description)
+set.seed(42)
+n <- 100
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset <- rnorm(n, mean = mu, sd = sigma)
+head(dataset)
+## [1] 12.741917 8.870604 10.726257 11.265725 10.808537 9.787751
+cat("Population Mean (mu):", mu, "\n")
+## Population Mean (mu): 10
+cat("Population Variance (sigma_squared):", sigma_squared, "\n")
+## Population Variance (sigma_squared): 4
+sample_mean <- mean(dataset)
+sample_variance <- var(dataset)
+cat("Sample Mean:", sample_mean, "\n")
+## Sample Mean: 10.06503
+cat("Sample Variance:", sample_variance, "\n")
+#----------------------------------------------------
+```
+
+# a) use provided formulas to estimate variance
+since numerator is the same in both formulas its good for us to calculate it separately
+```{r}
+sum_deviations <- sum((dataset - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n
+
+#printing results
+cat("n-1 estimator:", var_es_1, "\n")
+cat("n estimator:", var_es_2, "\n")
+
+
+```
+
+# b) finding  estimates for different n
+```{r}
+
+
+# n = 10
+set.seed(42)
+n_1 <- 10
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset_1 <- rnorm(n_1, mean = mu, sd = sigma)
+sample_mean <- mean(dataset_1)
+sample_variance_1 <- var(dataset_1)
+sum_deviations <- sum((dataset_1 - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n_1-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n_1
+
+#printing results
+cat("n = 10 Population variance:", sigma_squared, "\n")
+cat("n = 10 Sample variance:", sample_variance_1, "\n")
+cat("n = 10, n-1 estimator:", var_es_1, "\n")
+cat("n = 10, n estimator:", var_es_2, "\n")
+
+```
+
+
+
+
+```{r}
+# n = 50
+set.seed(42)
+n_1 <- 50
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset_1 <- rnorm(n_1, mean = mu, sd = sigma)
+sample_mean <- mean(dataset_1)
+sample_variance_1 <- var(dataset_1)
+sum_deviations <- sum((dataset_1 - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n_1-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n_1
+
+#printing results
+cat("n = 50 Population variance:", sigma_squared, "\n")
+cat("n = 50 Sample variance:", sample_variance_1, "\n")
+cat("n = 50, n-1 estimator:", var_es_1, "\n")
+cat("n = 50, n estimator:", var_es_2, "\n")
+```
+```{r}
+# n = 100
+set.seed(42)
+n_1 <- 100
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset_1 <- rnorm(n_1, mean = mu, sd = sigma)
+sample_mean <- mean(dataset_1)
+sample_variance_1 <- var(dataset_1)
+sum_deviations <- sum((dataset_1 - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n_1-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n_1
+
+#printing results
+cat("n = 100 Population variance:", sigma_squared, "\n")
+cat("n = 100 Sample variance:", sample_variance_1, "\n")
+cat("n = 100, n-1 estimator:", var_es_1, "\n")
+cat("n = 100, n estimator:", var_es_2, "\n")
+```
+
+
+```{r}
+# n = 1000
+set.seed(42)
+n_1 <- 1000
+mu <- 10
+sigma_squared <- 4
+sigma <- sqrt(sigma_squared)
+dataset_1 <- rnorm(n_1, mean = mu, sd = sigma)
+sample_mean <- mean(dataset_1)
+sample_variance_1 <- var(dataset_1)
+sum_deviations <- sum((dataset_1 - sample_mean)^2)
+
+# n-1 estimator
+var_es_1 <- sum_deviations / (n_1-1)
+
+# n estimator
+var_es_2 <- sum_deviations / n_1
+
+#printing results
+cat("n = 1000 Population variance:", sigma_squared, "\n")
+cat("n = 1000 Sample variance:", sample_variance_1, "\n")
+cat("n = 1000, n-1 estimator:", var_es_1, "\n")
+cat("n = 1000, n estimator:", var_es_2, "\n")
+```
+
+# c) finding biases of both estimators
+Bias(σ2n) = E(σ2n)−σ2 and Bias(σ2n−1) = E(σ2n−1)−σ2;
+
+we will find our expected values using SLLN and generated samples
+
+```{r}
+n_simulations <- 10000
+
+results <- replicate(n_simulations, {
+  dataset_i <- rnorm(n_1, mean = mu, sd = sigma)
+  
+  sample_mean <- mean(dataset_i)
+  sum_deviations <- sum((dataset_i - sample_mean)^2)
+  
+  var_n_minus_1 <- sum_deviations / (n_1 - 1) 
+  var_n         <- sum_deviations / n_1
+  
+  c(est_n_minus_1 = var_n_minus_1, est_n = var_n)
+})
+
+expected_values <- rowMeans(results)
+
+
+bias_n_minus_1 <- expected_values["est_n_minus_1"] - sigma_squared
+bias_n         <- expected_values["est_n"]         - sigma_squared
+
+cat("Bias of n-1 estimator:", bias_n_minus_1, "\n")
+cat("Bias of n estimator:  ", bias_n, "\n")
+
+
+```
+
+# d) explaining result 
+as we can see n-1 estimator is more accurate and has almost 0 bias comparing to
+
+n estimator, as expected, but it != 0 since number of our samples is only 10000
+
+# e) deriving expected value of estimators analytically+finding biases
+
+sum((xi - sample_mean)**2) is in formulas of  both estimators so it would be helpful to 
+
+calculate its expected value separately, lets do this:
+
+first, it would be helpful to transform this sum 
+
+
+$$
+\begin{aligned}
+\text{I. Transforming sum} \\
+\sum_{i=1}^{n} (X_i - \mu)^2 &= \sum_{i=1}^{n} \left[ (X_i - \bar{X}) + (\bar{X} - \mu) \right]^2 \\
+&= \sum_{i=1}^{n} (X_i - \bar{X})^2 + 2(\bar{X} - \mu) \underbrace{\sum_{i=1}^{n} (X_i - \bar{X})}_{0} + \sum_{i=1}^{n} (\bar{X} - \mu)^2 \\
+\sum_{i=1}^{n} (X_i - \mu)^2 &= \sum_{i=1}^{n} (X_i - \bar{X})^2 + n(\bar{X} - \mu)^2 \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{II. Finding expected value of sum} \\
+\mathbb{E}\left[\sum (X_i - \mu)^2\right] &= \mathbb{E}\left[\sum (X_i - \bar{X})^2\right] + \mathbb{E}\left[n(\bar{X} - \mu)^2\right] \\
+n\sigma^2 &= \mathbb{E}\left[\sum (X_i - \bar{X})^2\right] + n \cdot \frac{\sigma^2}{n} \\
+n\sigma^2 &= \mathbb{E}\left[\sum (X_i - \bar{X})^2\right] + \sigma^2 \\
+\mathbb{E}\left[\sum (X_i - \bar{X})^2\right] &= \mathbf{(n-1)\sigma^2} \quad
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{Derivation of the Variance of the Sample Mean } \bar{X} \text{(additional proof)}: \\
+\\
+\text {E}\left[(\bar{X} - \mu)^2\right] = {Var}(\bar{X}) &= \text{Var}\left( \frac{1}{n} \sum_{i=1}^{n} X_i \right) \\
+\\
+\text{Using the property } \text{Var}(cX) = c^2 \text{Var}(X): \\
+&= \frac{1}{n^2} \text{Var}\left( \sum_{i=1}^{n} X_i \right) \\
+\\
+\text{Since } X_i \text{ are independent, } \text{Var}(\sum X_i) = \sum \text{Var}(X_i): \\
+&= \frac{1}{n^2} \sum_{i=1}^{n} \text{Var}(X_i) \\
+\\
+\text{Since each } X_i \text{ has the same variance } \sigma^2: \\
+&= \frac{1}{n^2} \sum_{i=1}^{n} \sigma^2 \\
+\\
+\text{Summing a constant } n \text{ times:} \\
+&= \frac{1}{n^2} (n \cdot \sigma^2) \\
+\\
+\text{Final Result:} \\
+\text{Var}(\bar{X}) &= \frac{\sigma^2}{n}
+\end{aligned}
+$$
+
+
+$$
+\begin{aligned}
+\text{III. Calculating expected value of estimators} \\
+\mathbf{E[\hat{\sigma}^2_{n-1}]} &= \mathbb{E}\left[\frac{1}{n-1} \sum (X_i - \bar{X})^2\right] = \frac{1}{n-1} \cdot (n-1)\sigma^2 = \mathbf{\sigma^2} \quad \\[1em]
+\mathbf{E[\hat{\sigma}^2_{n}]} &= \mathbb{E}\left[\frac{1}{n} \sum (X_i - \bar{X})^2\right] = \frac{1}{n} \cdot (n-1)\sigma^2 = \mathbf{\sigma^2 \frac{n-1}{n}} \quad 
+\end{aligned}
+$$
+
+# f) finding Bias mathematically
+
+$$
+\begin{aligned}
+\textbf{1. Bias of the Estimator } \hat{\sigma}^2_n \text{ (dividing by } n\text{):} \\
+\ \\
+\\
+\text{Bias}(\hat{\sigma}^2_n) &= E[\hat{\sigma}^2_n] - \sigma^2 \\
+&= E\left[ \frac{1}{n} \sum_{i=1}^{n} (X_i - \bar{X})^2 \right] - \sigma^2 \\
+&= \frac{1}{n} E\left[ \sum_{i=1}^{n} (X_i - \bar{X})^2 \right] - \sigma^2 \\
+\\
+\text{Substituting the result } E[\sum(X_i - \bar{X})^2] = (n-1)\sigma^2: \\
+&= \frac{1}{n} (n-1)\sigma^2 - \sigma^2 \\
+&= \left( \frac{n-1}{n} - 1 \right) \sigma^2 \\
+&= \left( 1 - \frac{1}{n} - 1 \right) \sigma^2 \\
+&= \mathbf{-\frac{4}{n}} \quad (\text{Biased})
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\textbf{2. Bias of the Estimator } \hat{\sigma}^2_{n-1} \text{ (dividing by } n-1\text{):} \\
+\text{This is the unbiased sample variance estimator } (S^2). \\
+\\
+\text{Bias}(\hat{\sigma}^2_{n-1}) &= E[\hat{\sigma}^2_{n-1}] - \sigma^2 \\
+&= E\left[ \frac{1}{n-1} \sum_{i=1}^{n} (X_i - \bar{X})^2 \right] - \sigma^2 \\
+&= \frac{1}{n-1} E\left[ \sum_{i=1}^{n} (X_i - \bar{X})^2 \right] - \sigma^2 \\
+\\
+\text{Substituting the result } E[\sum(X_i - \bar{X})^2] = (n-1)\sigma^2: \\
+&= \frac{1}{n-1} (n-1)\sigma^2 - \sigma^2 \\
+&= \sigma^2 - \sigma^2 \\
+&= 4 - 4 \\
+&= \mathbf{0} \quad (\text{Unbiased})
+\end{aligned}
+$$
+
+
+# g) results:
+------------------------------------------------------------------------
+results are expected - estimator of sample variance with n-1 in denominator
+
+turned to be more precise and its bias going -> 0 as n -> inf, that we showed in part c)
+
+also we showed mathematically that this estimator is unbiased, as expected
+
+so practical and theoretical results coincide, in fact
+------------------------------------------------------------------------
+# Conclusions
+
+## Problem 1
+
+**Method 1 (Exact Chi-Squared) is the best overall method.**
+
+-   Theoretically exact\
+-   Correct coverage\
+-   Good precision\
+-   Methods 2 and 4 under-cover; Method 3 is too wide
+
+### Effect of Sample Size $n$
+
+If $n$ increases:
+
+-   All intervals become shorter\
+-   Approximate methods improve\
+-   Coverage approaches the nominal level
+
+If $n$ decreases:
+
+-   Skewness increases\
+-   Under-coverage of Methods 2 and 4 worsens\
+-   Method 1 remains reliable
+
+## Problem 2
+
+## Problem 3
+Bias Analysis: Analytically, we proved that  
+σ^2(n−1) is an unbiased estimator of the population variance, whereas σ^2(n) is biased.
+
+Nature of Bias: The biased estimator systematically produces values lower than the true parameter (negative bias of −σ^2/n). 
+
+This occurs because the sample mean minimizes the sum of squared deviations, slightly reducing the calculated variability compared to the true population mean.
+
+Simulation Verification: Simulations performed in R aligned with our theoretical derivations.
+
+Effect of n: As the sample size n increases, the bias −σ^2/n approaches zero, meaning the distinction between the two estimators becomes less significant for large datasets.
